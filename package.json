@@ -1,6 +1,6 @@
 {
   "name": "@dotrino/install",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Botón de \"Instalar app\" (PWA) unificado del ecosistema Dotrino: Web Component <dotrino-install> que captura beforeinstallprompt temprano, maneja iOS con un modal de instrucciones (sin alert) y se oculta si ya está instalada. Vue o vanilla. Sin JS de terceros ni cookies, bilingüe es/en.",
   "type": "module",
   "main": "src/index.js",

@@ -138,7 +138,9 @@ export function chromeInstallUrl (param = INSTALL_PARAM) {
     u.searchParams.set(param, '1')
     const target = `${u.host}${u.pathname}${u.search}`
     const fallback = encodeURIComponent(u.toString())
-    return `intent://${target}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${fallback};end`
+    // action=VIEW + category=BROWSABLE son necesarios para que Android despache el
+    // intent al navegador real (Chrome) y NO lo deje dentro del Custom Tab actual.
+    return `intent://${target}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.android.chrome;S.browser_fallback_url=${fallback};end`
   } catch (_) { return null }
 }
 
@@ -532,7 +534,7 @@ class DotrinoInstall extends HTMLElement {
     if (ctx === 'relaunch') {
       const url = chromeInstallUrl()
       this.dispatchEvent(new CustomEvent('cc-install-result', { bubbles: true, composed: true, detail: { outcome: 'relaunch' } }))
-      if (url) { try { location.href = url } catch (_) {} }
+      if (url) this._navOut(url)
       return
     }
 
@@ -544,6 +546,42 @@ class DotrinoInstall extends HTMLElement {
       bubbles: true, composed: true, detail: { outcome }
     }))
     this._render()
+  }
+
+  /**
+   * Sale del Custom Tab/webview embebido hacia Chrome. Dentro de un contexto
+   * embebido, `location.href = 'intent://…'` suele ser tragado en silencio; un
+   * click real sobre un <a> dentro del gesto del usuario sí se despacha. Si el
+   * intent no se maneja, a ~1.2 s caemos a `googlechrome://` (otro esquema que
+   * fuerza el navegador) y, por último, a abrir la URL https con el marcador.
+   */
+  _navOut (url) {
+    const click = (href) => {
+      try {
+        const a = document.createElement('a')
+        a.href = href
+        a.style.display = 'none'
+        document.body.appendChild(a)
+        a.click()
+        setTimeout(() => { try { a.remove() } catch (_) {} }, 0)
+        return true
+      } catch (_) { return false }
+    }
+    if (!click(url)) { try { location.href = url } catch (_) {} }
+    // Fallback: si seguimos vivos y visibles tras el intento, el intent no se
+    // despachó → probar googlechrome:// y luego la URL plana en pestaña nueva.
+    setTimeout(() => {
+      if (document.visibilityState !== 'visible') return // ya saltó a Chrome
+      try {
+        const u = new URL(location.href)
+        u.searchParams.delete(HUB_PARAM)
+        u.searchParams.set(INSTALL_PARAM, '1')
+        const https = 'https://' + u.host + u.pathname + u.search
+        if (!click('googlechrome://navigate?url=' + encodeURIComponent(https))) {
+          window.open(https, '_blank', 'noopener')
+        }
+      } catch (_) {}
+    }, 1200)
   }
 
   /** Botón grande del overlay: dispara el prompt nativo; si no hay, instrucciones. */
