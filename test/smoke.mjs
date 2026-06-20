@@ -107,16 +107,13 @@ const ok = (k) => { results[k] = '✓' }
   // click en iOS → abre modal de instrucciones (sin alert)
   await page.evaluate(() => document.querySelector('#btn').shadowRoot.querySelector('button.trigger').click())
   await page.waitForTimeout(80)
-  // El modal se renderiza en un portal a nivel de <body> (no en el shadow del host),
-  // para que un ancestro con backdrop-filter/transform no descoloque el position:fixed.
-  const portalSel = '[data-dotrino-install-portal]'
-  const modalOpen = await page.evaluate((s) => !!document.querySelector(s)?.shadowRoot?.querySelector('.backdrop .card h2'), portalSel)
+  const modalOpen = await page.evaluate(() => !!document.querySelector('#btn').shadowRoot.querySelector('.backdrop .card h2'))
   modalOpen ? ok('ios-click-opens-modal') : fail('ios-click-opens-modal', 'el click en iOS debería abrir el modal de instrucciones')
 
   // cerrar modal
-  await page.evaluate((s) => document.querySelector(s).shadowRoot.querySelector('.ok').click(), portalSel)
+  await page.evaluate(() => document.querySelector('#btn').shadowRoot.querySelector('.ok').click())
   await page.waitForTimeout(50)
-  const modalClosed = await page.evaluate((s) => !document.querySelector(s)?.shadowRoot?.querySelector('.backdrop'), portalSel)
+  const modalClosed = await page.evaluate(() => !document.querySelector('#btn').shadowRoot.querySelector('.backdrop'))
   modalClosed ? ok('ios-modal-closes') : fail('ios-modal-closes', 'el modal debería cerrarse')
 
   if (errors.length) fail('no-page-errors-ios', errors.join(' | '))
