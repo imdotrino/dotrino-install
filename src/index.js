@@ -110,10 +110,20 @@ export function isAndroid () {
 }
 
 const INSTALL_PARAM = 'pwa-install'
+const HUB_PARAM = 'hub'
 
 /** ¿La URL trae el marcador de "abrir para instalar" (tras relanzar en Chrome)? */
 export function hasInstallFlag (param = INSTALL_PARAM) {
   try { return new URLSearchParams(location.search).has(param) } catch (_) { return false }
+}
+
+/**
+ * ¿La app fue abierta DESDE el hub instalado (el home le puso `?hub=1`)? En ese
+ * caso corre embebida en un Custom Tab que puede reportarse como standalone; este
+ * marcador es la señal fiable de "estoy embebido, ofrece instalar en Chrome".
+ */
+export function isEmbeddedHub () {
+  try { return new URLSearchParams(location.search).has(HUB_PARAM) } catch (_) { return false }
 }
 
 /**
@@ -124,6 +134,7 @@ export function hasInstallFlag (param = INSTALL_PARAM) {
 export function chromeInstallUrl (param = INSTALL_PARAM) {
   try {
     const u = new URL(location.href)
+    u.searchParams.delete(HUB_PARAM) // el marcador del hub no debe viajar a Chrome
     u.searchParams.set(param, '1')
     const target = `${u.host}${u.pathname}${u.search}`
     const fallback = encodeURIComponent(u.toString())
@@ -141,8 +152,12 @@ export function chromeInstallUrl (param = INSTALL_PARAM) {
  *  - 'none'       nada que ofrecer (todavía esperando, o navegador sin soporte).
  */
 export function installContext () {
-  if (isAppInstalled()) return 'installed'
+  // Prompt nativo (Chrome real) siempre gana.
   if (_deferred) return 'native'
+  // Embebido desde el hub (Android): ofrecer relanzar en Chrome AUNQUE el Custom
+  // Tab se reporte como standalone (por eso esto va ANTES de isAppInstalled()).
+  if (isEmbeddedHub() && isAndroid()) return 'relaunch'
+  if (isAppInstalled()) return 'installed'
   if (isIOS()) return 'ios'
   if (_settled && isAndroid()) return 'relaunch'
   return 'none'

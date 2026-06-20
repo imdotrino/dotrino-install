@@ -19,6 +19,9 @@ export const INSTALL_PARAM: string
 /** ¿La URL trae el marcador `?pwa-install=1` (tras relanzar en Chrome)? */
 export function hasInstallFlag(param?: string): boolean
 
+/** ¿La app fue abierta desde el hub instalado (el home le puso `?hub=1`)? */
+export function isEmbeddedHub(): boolean
+
 /**
  * `intent://` que reabre la app en Chrome (no el Custom Tab/webview embebido)
  * con `?pwa-install=1`, con fallback a https. Solo útil en Android. null si falla.
