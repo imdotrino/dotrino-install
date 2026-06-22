@@ -1,5 +1,7 @@
 # @dotrino/install
 
+> **Parte del ecosistema [Dotrino](https://dotrino.com).** Misión: aplicaciones que resuelven problemas comunes, respetando tu privacidad — sin anuncios, sin cookies, sin rastreo de datos, sin vender tu identidad a nadie.
+
 Botón de **"Instalar app"** (PWA) unificado para todo el ecosistema
 [Dotrino](https://dotrino.com).
 
