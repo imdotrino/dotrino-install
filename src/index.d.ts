@@ -6,6 +6,15 @@ export function isAppInstalled(): boolean
 /** Detección de iOS/iPadOS (incluye el iPad que se reporta como Mac). */
 export function isIOS(): boolean
 
+/** Detección de Android. */
+export function isAndroid(): boolean
+
+/**
+ * ¿Está instalada la app nativa relacionada (la TWA)? vía getInstalledRelatedApps().
+ * `packageId` opcional para exigir una en concreto. false si la API no existe.
+ */
+export function isRelatedAppInstalled(packageId?: string): Promise<boolean>
+
 /** ¿Tiene sentido ofrecer instalar? (prompt nativo disponible, o iOS, y no instalada). */
 export function canInstall(): boolean
 
@@ -26,8 +35,10 @@ export const HOME_DEFAULT: string
 
 /**
  * Custom element del botón de instalar (`<dotrino-install>`).
- * Atributos: `lang` ("es"|"en"), `label` (texto), `icon` ("false" oculta el icono).
- * Eventos: `cc-install` (cancelable), `cc-install-result` (detail.outcome).
+ * Atributos: `lang` ("es"|"en"), `label` (texto), `icon` ("false" oculta el icono),
+ * `android-apk` (URL del APK/Play → en Android prefiere la TWA), `android-package`
+ * (id para detectar si ya está instalada), `android-label` (texto en modo Android).
+ * Eventos: `cc-install` (cancelable), `cc-install-result` (detail.outcome; 'android-app' al abrir el APK).
  */
 export class DotrinoInstall extends HTMLElement {
   /** Dispara la instalación desde JS (igual que el click del usuario). */

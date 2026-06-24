@@ -91,6 +91,27 @@ export function isIOS () {
   return false
 }
 
+/** Detección de Android. */
+export function isAndroid () {
+  try { return /Android/i.test(navigator.userAgent || '') } catch (_) { return false }
+}
+
+/**
+ * ¿Está instalada la app nativa relacionada (la TWA)? Usa `getInstalledRelatedApps()`
+ * (Chrome Android; requiere `related_applications` en el manifest para matchear por
+ * Play). `packageId` opcional para exigir una en concreto (p.ej. 'com.dotrino.wallet').
+ * Devuelve false si la API no existe (otros navegadores) o ante cualquier error.
+ */
+export async function isRelatedAppInstalled (packageId) {
+  try {
+    if (!navigator.getInstalledRelatedApps) return false
+    const apps = await navigator.getInstalledRelatedApps()
+    if (!apps || !apps.length) return false
+    if (!packageId) return true
+    return apps.some((a) => a.id === packageId || (a.url || '').includes(packageId))
+  } catch (_) { return false }
+}
+
 /**
  * ¿Tiene sentido ofrecer instalar? true si hay prompt nativo disponible, o si es
  * iOS (instalable a mano vía Compartir), siempre que NO esté ya instalada.
@@ -147,6 +168,7 @@ export async function promptInstall () {
 const I18N = {
   es: {
     install: 'Instalar App',
+    installAndroid: 'Instalar app Android',
     title: 'Instalar la app',
     iosIntro: 'Para instalar esta app en tu iPhone o iPad:',
     iosStep1: 'Pulsa el botón Compartir',
@@ -157,6 +179,7 @@ const I18N = {
   },
   en: {
     install: 'Install App',
+    installAndroid: 'Install Android app',
     title: 'Install the app',
     iosIntro: 'To install this app on your iPhone or iPad:',
     iosStep1: 'Tap the Share button',
@@ -194,6 +217,12 @@ const ICON_IOS_SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
      lang   "es" | "en"  (default: <html lang> / navigator)
      label  texto del botón (default i18n "Instalar"/"Install")
      icon   "false" para ocultar el icono y dejar solo texto
+     android-apk     URL del APK (release) o de la ficha de Play de la TWA. Si está
+                     presente y el dispositivo es Android, el botón PREFIERE la app
+                     nativa: descarga/abre esa URL en vez del prompt PWA.
+     android-package id del paquete (p.ej. com.dotrino.wallet) para detectar con
+                     getInstalledRelatedApps() si ya está instalada (entonces se oculta).
+     android-label   texto del botón en modo Android (default "Instalar app Android").
    Custom properties (estilo):
      --cc-install-color, --cc-install-bg, --cc-install-bg-hover, --cc-install-radius,
      --cc-install-pad, --cc-install-gap, --cc-install-font-size, --cc-install-icon,
@@ -276,20 +305,29 @@ const STYLE = `
 `
 
 class DotrinoInstall extends HTMLElement {
-  static get observedAttributes () { return ['lang', 'label', 'icon'] }
+  static get observedAttributes () { return ['lang', 'label', 'icon', 'android-apk', 'android-package', 'android-label'] }
 
   constructor () {
     super()
     this.attachShadow({ mode: 'open' })
     this._modalOpen = false
     this._unsub = null
+    this._twaInstalled = false
     this._onState = this._render.bind(this)
     this._onKey = this._onKey.bind(this)
   }
 
   connectedCallback () {
     this._unsub = onInstallStateChange(this._onState)
+    this._checkTwa()
     this._render()
+  }
+
+  /** Android + android-apk: detecta si la TWA ya está instalada para ocultarse. */
+  async _checkTwa () {
+    if (!this.getAttribute('android-apk') || !isAndroid()) return
+    const installed = await isRelatedAppInstalled(this.getAttribute('android-package'))
+    if (installed !== this._twaInstalled) { this._twaInstalled = installed; this._render() }
   }
 
   disconnectedCallback () {
@@ -302,7 +340,11 @@ class DotrinoInstall extends HTMLElement {
   }
 
   _render () {
-    const show = canInstall()
+    // En Android, si hay APK/TWA, se PREFIERE la app nativa sobre el PWA:
+    //  - ya instalada  → nada que ofrecer (se oculta)
+    //  - no instalada  → se muestra siempre (aunque el prompt PWA no esté listo)
+    const androidMode = !!this.getAttribute('android-apk') && isAndroid() && !isAppInstalled()
+    const show = androidMode ? !this._twaInstalled : canInstall()
     // Oculta el host por completo cuando no hay nada que ofrecer (no ocupa espacio).
     this.hidden = !show
     if (!show && !this._modalOpen) {
@@ -312,7 +354,9 @@ class DotrinoInstall extends HTMLElement {
 
     const lang = resolveLang(this.getAttribute('lang'))
     const t = I18N[lang]
-    const label = this.getAttribute('label') != null ? this.getAttribute('label') : t.install
+    const label = androidMode
+      ? (this.getAttribute('android-label') != null ? this.getAttribute('android-label') : t.installAndroid)
+      : (this.getAttribute('label') != null ? this.getAttribute('label') : t.install)
     const showIcon = (this.getAttribute('icon') || '').toLowerCase() !== 'false'
 
     let html = `<style>${STYLE}</style>`
@@ -353,6 +397,16 @@ class DotrinoInstall extends HTMLElement {
   async _activate () {
     const ev = new CustomEvent('cc-install', { bubbles: true, composed: true, cancelable: true })
     if (!this.dispatchEvent(ev)) return // la app canceló para hacer lo suyo
+
+    // Modo Android: preferir la TWA → abrir/descargar el APK (sideload) o la ficha de Play.
+    const apk = this.getAttribute('android-apk')
+    if (apk && isAndroid() && !isAppInstalled() && !this._twaInstalled) {
+      try { window.location.href = apk } catch (_) {}
+      this.dispatchEvent(new CustomEvent('cc-install-result', {
+        bubbles: true, composed: true, detail: { outcome: 'android-app' }
+      }))
+      return
+    }
 
     const outcome = await promptInstall()
     if (outcome === 'instructions') {
