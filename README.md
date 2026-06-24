@@ -57,6 +57,24 @@ y al hacer click abre el modal con las instrucciones de *Compartir*.
 | `lang` | `es` \| `en` | `<html lang>` / navegador |
 | `label` | texto del botón | `Instalar` / `Install` |
 | `icon` | `false` para ocultar el icono | icono visible |
+| `android-apk` | URL del APK (release) o de Play de la TWA | — |
+| `android-package` | id del paquete (`com.dotrino.<app>`) | — |
+| `android-label` | texto del botón en modo Android | `Instalar app Android` |
+
+#### Preferir la TWA en Android
+
+Si pasás `android-apk`, en **Android** el botón **prefiere la app nativa (TWA)** sobre
+el PWA: al tocarlo descarga/abre ese APK (o la ficha de Play). Con `android-package` +
+`related_applications` en tu manifest, usa `getInstalledRelatedApps()` para **ocultarse
+si la app ya está instalada**. En desktop/iOS se comporta como siempre (prompt PWA /
+instrucciones). Ver la receta para generar la TWA en `TWA.md` del ecosistema.
+
+```html
+<dotrino-install
+  android-apk="https://github.com/imdotrino/dotrino-wallet/releases/latest/download/wallet.apk"
+  android-package="com.dotrino.wallet">
+</dotrino-install>
+```
 
 ### Estilo (custom properties)
 
