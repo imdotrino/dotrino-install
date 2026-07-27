@@ -1,0 +1,37 @@
+# Publica `web/` en install.dotrino.com. No hay build: son dos scripts y una página
+# estática (CONVENCIONES §1.2), así que se sube la carpeta tal cual.
+#
+# Va por Actions y no por «build por rama» porque lo que se sirve es una SUBCARPETA:
+# Pages solo sabe servir `/` o `/docs`, y la raíz de este repo es el paquete npm
+# `@dotrino/install`, que no tiene nada que hacer en el sitio.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./web
+      - id: deployment
+        uses: actions/deploy-pages@v4

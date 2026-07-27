@@ -5,6 +5,17 @@
 Botón de **"Instalar app"** (PWA) unificado para todo el ecosistema
 [Dotrino](https://dotrino.com).
 
+> **Este repo tiene DOS cosas, y conviene no confundirlas:**
+> - el **paquete npm `@dotrino/install`** (`src/`) — el botón de instalar la PWA;
+> - el **instalador universal del ecosistema** (`web/`), servido en
+>   **[install.dotrino.com](https://install.dotrino.com/)** — el `curl … | sh` que pone a
+>   andar cualquier herramienta de Dotrino (el vault, el agente de la terminal, el túnel).
+>
+> Las dos son «instalar», por eso viven juntas: una instala una app en tu teléfono y la
+> otra una herramienta en tu computadora. Estuvo en `dotrino.com/install.sh` hasta el
+> 2026-07-27; se movió a su propio subdominio para que el dominio del ecosistema no sea
+> también un servidor de scripts.
+
 Resuelve la fragmentación de tener el mismo flujo `beforeinstallprompt` copiado a
 mano en cada app (Vue y vanilla), donde cada copia divergió y arrastra los mismos
 bugs sutiles. Un solo Web Component, testeado, igual en todas las apps.
