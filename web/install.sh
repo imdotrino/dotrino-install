@@ -14,8 +14,8 @@ set -eu
 
 PKG="${1:-}"
 if [ -z "$PKG" ]; then
-  echo "uso: curl -fsSL https://install.dotrino.com/install.sh | sh -s -- <paquete-npm> [args]" >&2
-  echo "ej.: ... | sh -s -- @dotrino/terminal-agent enroll" >&2
+  echo "usage: curl -fsSL https://install.dotrino.com/install.sh | sh -s -- <npm-package> [args]" >&2
+  echo "e.g.:  ... | sh -s -- @dotrino/terminal-agent enroll" >&2
   exit 2
 fi
 shift 2>/dev/null || true
@@ -35,11 +35,11 @@ have_node() {
 target() {
   os=$(uname -s); arch=$(uname -m)
   case "$os" in Linux) o=linux ;; Darwin) o=darwin ;;
-    *) log "SO no soportado por el auto-instalador de Node: $os. Instala Node $NODE_MIN+ y reintenta."; exit 1 ;;
+    *) log "OS not supported by the Node auto-installer: $os. Install Node $NODE_MIN+ and try again."; exit 1 ;;
   esac
   case "$arch" in
     x86_64|amd64) a=x64 ;; arm64|aarch64) a=arm64 ;; armv7l) a=armv7l ;;
-    *) log "arquitectura no soportada: $arch. Instala Node $NODE_MIN+ y reintenta."; exit 1 ;;
+    *) log "unsupported architecture: $arch. Install Node $NODE_MIN+ and try again."; exit 1 ;;
   esac
   echo "$o-$a"
 }
@@ -48,13 +48,13 @@ bootstrap_node() {
   t=$(target)
   dir="$DOT_DIR/node-${NODE_VER}-${t}"
   if [ ! -x "$dir/bin/node" ]; then
-    log "Node $NODE_MIN+ no encontrado → bajando Node ${NODE_VER} (${t}) a ${DOT_DIR} (sin root)…"
+    log "Node $NODE_MIN+ not found -> downloading Node ${NODE_VER} (${t}) into ${DOT_DIR} (no root needed)…"
     url="https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-${t}.tar.xz"
     mkdir -p "$DOT_DIR"
     tmp=$(mktemp -d)
     if command -v curl >/dev/null 2>&1; then curl -fsSL "$url" -o "$tmp/node.tar.xz"
     elif command -v wget >/dev/null 2>&1; then wget -qO "$tmp/node.tar.xz" "$url"
-    else log "hace falta curl o wget para bajar Node."; exit 1
+    else log "curl or wget is required to download Node."; exit 1
     fi
     tar -xJf "$tmp/node.tar.xz" -C "$DOT_DIR"
     rm -rf "$tmp"
@@ -67,8 +67,8 @@ bootstrap_node() {
 # npm lo toma por una RUTA LOCAL y falla buscando `./@dotrino/vaultd:latest/package.json`,
 # que no dice nada de lo que pasó.
 case "$PKG" in
-  *:*) log "«$PKG» no es un paquete válido: la versión va con @, no con :."
-       log "  prueba:  ${PKG%%:*}@${PKG##*:}"
+  *:*) log "\"$PKG\" is not a valid package: the version goes with @, not with :."
+       log "  try:  ${PKG%%:*}@${PKG##*:}"
        exit 2 ;;
 esac
 
@@ -85,9 +85,9 @@ if [ -t 1 ] && { : < /dev/tty; } 2>/dev/null; then exec < /dev/tty; fi
 # parece que la instalación salió mal. Se dice ANTES de ejecutar, porque `exec` no vuelve.
 if [ -n "${BOOTSTRAPPED_DIR:-}" ]; then
   log ""
-  log "Node quedó instalado solo para esta terminal. Para usar la herramienta desde otra:"
+  log "Node was installed for THIS terminal only. To use the tool from another one:"
   log "  export PATH=\"$BOOTSTRAPPED_DIR/bin:\$PATH\""
-  log "O, si la vas a usar a menudo, déjala instalada de verdad (sin root):"
+  log "Or, if you will use it often, install it for good (no root needed):"
   log "  export PATH=\"$BOOTSTRAPPED_DIR/bin:\$PATH\"; npm i -g $PKG"
   log ""
 fi

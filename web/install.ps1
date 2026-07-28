@@ -17,8 +17,8 @@ $ErrorActionPreference = 'Stop'
 
 if (-not $Pkg) { $Pkg = $env:DOTRINO_PKG }
 if (-not $Pkg) {
-  Write-Host 'uso: & ([scriptblock]::Create((irm https://install.dotrino.com/install.ps1))) <paquete-npm> [args]'
-  Write-Host 'ej.: ... @dotrino/terminal-agent enroll'
+  Write-Host 'usage: & ([scriptblock]::Create((irm https://install.dotrino.com/install.ps1))) <npm-package> [args]'
+  Write-Host 'e.g.:  ... @dotrino/terminal-agent enroll'
   exit 2
 }
 
@@ -37,7 +37,7 @@ if (-not $HadNode) {
   $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
   $dir = Join-Path $DotDir "node-$NodeVer-win-$arch"
   if (-not (Test-Path (Join-Path $dir 'node.exe'))) {
-    Write-Host "Node $NodeMin+ no encontrado -> bajando Node $NodeVer (win-$arch) a $DotDir (sin admin)..."
+    Write-Host "Node $NodeMin+ not found -> downloading Node $NodeVer (win-$arch) into $DotDir (no admin needed)..."
     New-Item -ItemType Directory -Force -Path $DotDir | Out-Null
     $zip = Join-Path $env:TEMP "dotrino-node-$NodeVer-$arch.zip"
     Invoke-WebRequest -Uri "https://nodejs.org/dist/$NodeVer/node-$NodeVer-win-$arch.zip" -OutFile $zip
@@ -59,12 +59,12 @@ $rc = $LASTEXITCODE
 
 if ($Bootstrapped) {
   Write-Host ''
-  Write-Host 'Node quedó instalado solo para esta ventana. Para usar la herramienta desde otra,'
-  Write-Host 'pega esto primero:'
+  Write-Host 'Node was installed for THIS window only. To use the tool from another one,'
+  Write-Host 'paste this first:'
   Write-Host ''
   Write-Host "  `$env:Path = `"$dir;`$env:Path`""
   Write-Host ''
-  Write-Host 'O, si la vas a usar a menudo, déjala instalada de verdad (no pide administrador):'
+  Write-Host 'Or, if you will use it often, install it for good (no administrator needed):'
   Write-Host ''
   Write-Host "  `$env:Path = `"$dir;`$env:Path`"; npm i -g $Pkg"
   Write-Host ''
