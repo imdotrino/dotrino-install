@@ -60,7 +60,17 @@ bootstrap_node() {
     rm -rf "$tmp"
   fi
   PATH="$dir/bin:$PATH"; export PATH
+  BOOTSTRAPPED_DIR="$dir"
 }
+
+# `@dotrino/vaultd:latest` es un error fácil: el separador de npm es `@`, no `:`. Sin esto,
+# npm lo toma por una RUTA LOCAL y falla buscando `./@dotrino/vaultd:latest/package.json`,
+# que no dice nada de lo que pasó.
+case "$PKG" in
+  *:*) log "«$PKG» no es un paquete válido: la versión va con @, no con :."
+       log "  prueba:  ${PKG%%:*}@${PKG##*:}"
+       exit 2 ;;
+esac
 
 have_node || bootstrap_node
 
@@ -69,6 +79,18 @@ have_node || bootstrap_node
 # real. Solo si la salida es una terminal ([ -t 1 ]) Y /dev/tty se puede abrir — en
 # CI/pipes sin terminal de control, reenganchar haría que el shell muriera.
 if [ -t 1 ] && { : < /dev/tty; } 2>/dev/null; then exec < /dev/tty; fi
+
+# Node bajado por nosotros: esta shell lo tiene en el PATH, pero UNA TERMINAL NUEVA NO.
+# Sin decirlo, el segundo comando de cualquier herramienta falla con «npx: not found» y
+# parece que la instalación salió mal. Se dice ANTES de ejecutar, porque `exec` no vuelve.
+if [ -n "${BOOTSTRAPPED_DIR:-}" ]; then
+  log ""
+  log "Node quedó instalado solo para esta terminal. Para usar la herramienta desde otra:"
+  log "  export PATH=\"$BOOTSTRAPPED_DIR/bin:\$PATH\""
+  log "O, si la vas a usar a menudo, déjala instalada de verdad (sin root):"
+  log "  export PATH=\"$BOOTSTRAPPED_DIR/bin:\$PATH\"; npm i -g $PKG"
+  log ""
+fi
 
 log "→ npx -y $PKG $*"
 exec npx -y "$PKG" "$@"

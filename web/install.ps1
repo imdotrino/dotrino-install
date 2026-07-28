@@ -31,7 +31,9 @@ function Test-NodeOk {
   catch { return $false }
 }
 
-if (-not (Test-NodeOk)) {
+$HadNode = Test-NodeOk
+$dir = $null
+if (-not $HadNode) {
   $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
   $dir = Join-Path $DotDir "node-$NodeVer-win-$arch"
   if (-not (Test-Path (Join-Path $dir 'node.exe'))) {
@@ -45,6 +47,26 @@ if (-not (Test-NodeOk)) {
   $env:Path = "$dir;$env:Path"
 }
 
+# Node bajado por nosotros: esta ventana lo tiene en el PATH, pero UNA VENTANA NUEVA NO.
+# Sin decirlo, el segundo comando de cualquier herramienta (emparejar, ver estado, la TUI)
+# falla con «npx no se reconoce» y parece que la instalación salió mal. Así que se dice,
+# con la línea exacta que hay que pegar.
+$Bootstrapped = (-not $HadNode) -and $dir -and (Test-Path $dir)
+
 Write-Host "-> npx -y $Pkg $($Rest -join ' ')"
 & npx.cmd -y $Pkg @Rest
-exit $LASTEXITCODE
+$rc = $LASTEXITCODE
+
+if ($Bootstrapped) {
+  Write-Host ''
+  Write-Host 'Node quedó instalado solo para esta ventana. Para usar la herramienta desde otra,'
+  Write-Host 'pega esto primero:'
+  Write-Host ''
+  Write-Host "  `$env:Path = `"$dir;`$env:Path`""
+  Write-Host ''
+  Write-Host 'O, si la vas a usar a menudo, déjala instalada de verdad (no pide administrador):'
+  Write-Host ''
+  Write-Host "  `$env:Path = `"$dir;`$env:Path`"; npm i -g $Pkg"
+  Write-Host ''
+}
+exit $rc
