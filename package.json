@@ -1,7 +1,7 @@
 {
   "name": "@dotrino/install",
   "version": "0.3.1",
-  "description": "Botón de \"Instalar app\" (PWA) unificado del ecosistema Dotrino: Web Component <dotrino-install> que captura beforeinstallprompt temprano, maneja iOS con un modal de instrucciones (sin alert) y se oculta si ya está instalada. Vue o vanilla. Sin JS de terceros ni cookies, bilingüe es/en.",
+  "description": "Bot\u00f3n de \"Instalar app\" (PWA) unificado del ecosistema Dotrino: Web Component <dotrino-install> que captura beforeinstallprompt temprano, maneja iOS con un modal de instrucciones (sin alert) y se oculta si ya est\u00e1 instalada. Vue o vanilla. Sin JS de terceros ni cookies, biling\u00fce es/en.",
   "type": "module",
   "main": "src/index.js",
   "module": "src/index.js",
@@ -22,7 +22,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node test/smoke.mjs"
+    "test": "node test/smoke.mjs",
+    "type-check": "tsc --noEmit"
   },
   "peerDependencies": {
     "vue": ">=3.3.0"
@@ -48,5 +49,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/imdotrino/dotrino-install.git"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "^22.0.0"
   }
 }
