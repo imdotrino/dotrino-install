@@ -110,16 +110,24 @@ else
   bootstrap_node
 fi
 
-# `curl | sh` deja stdin conectado al pipe, no a la terminal: si el comando necesita
-# entrada del usuario (p. ej. pegar el código de emparejamiento), reengancha la tty
-# real. Solo si la salida es una terminal ([ -t 1 ]) Y /dev/tty se puede abrir — en
-# CI/pipes sin terminal de control, reenganchar haría que el shell muriera.
-if [ -t 1 ] && { : < /dev/tty; } 2>/dev/null; then exec < /dev/tty; fi
+# `curl | sh` deja stdin conectado al pipe, no a la terminal: si la herramienta necesita
+# entrada del usuario (p. ej. pegar el código de emparejamiento), hay que darle la tty.
+#
+# PERO NO CON `exec < /dev/tty`, que es lo que había aquí y rompió el instalador el
+# 2026-08-24: con `curl | sh` el stdin del shell **es el propio script**, así que
+# reemplazarlo tira a la basura todo lo que quedaba por leer y el shell se queda leyendo
+# órdenes del teclado — parado, mudo, y con pinta de colgado. No se notó durante años
+# porque el script era corto y esa línea estaba casi al final; al crecer, se comió medio
+# instalador.
+#
+# La tty se le pasa a CADA COMANDO que la pueda necesitar, no al shell. Sin tty usable
+# (CI, cron), /dev/null: nunca el pipe, que es el script.
+if [ -t 1 ] && { : < /dev/tty; } 2>/dev/null; then STDIN_SRC=/dev/tty; else STDIN_SRC=/dev/null; fi
 
 # ── Lo de antes: correr y no dejar nada ─────────────────────────────────────────────
 if [ "$RUN_ONCE" = 1 ]; then
   log "→ npx -y $PKG $*"
-  exec npx -y "$PKG" "$@"
+  exec npx -y "$PKG" "$@" < "$STDIN_SRC"
 fi
 
 # ── Instalar de verdad ──────────────────────────────────────────────────────────────
@@ -136,7 +144,7 @@ if [ "$IGNORE_SCRIPTS" = 1 ]; then SCRIPTS_FLAG='--ignore-scripts'; fi
 # npm SIN silenciar: la instalación puede tardar bastante la primera vez y un minuto sin
 # una sola línea se lee como un cuelgue. Mejor ver el ruido de npm que dudar.
 step "installing $PKG into $DOT_DIR (no root) — the first time this can take a minute"
-npm install -g --prefix "$NPM_PREFIX" $SCRIPTS_FLAG "$PKG"
+npm install -g --prefix "$NPM_PREFIX" $SCRIPTS_FLAG "$PKG" < "$STDIN_SRC"
 
 # El nombre del comando lo dice el paquete, no lo adivinamos: así esto vale para
 # cualquier pieza del ecosistema sin cablear nada.
@@ -176,16 +184,18 @@ MARK_B='# <<< dotrino <<<'
 
 added=''
 if [ "$NO_PATH" = 0 ]; then
-  for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
-    [ -f "$rc" ] || continue
+  # Los rc del shell interactivo primero. `.profile` SOLO si no hay ninguno: escribir en
+  # los dos deja el mismo directorio dos veces en el PATH y toca un archivo de más.
+  rcs=''
+  for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+    [ -f "$rc" ] && rcs="$rcs $rc"
+  done
+  [ -z "$rcs" ] && rcs=" $HOME/.profile"
+  for rc in $rcs; do
     if grep -qF "$MARK_A" "$rc" 2>/dev/null; then continue; fi   # idempotente
     printf '\n%s\n%s\n%s\n' "$MARK_A" "$PATH_LINE" "$MARK_B" >> "$rc"
     added="$added $rc"
   done
-  if [ -z "$added" ] && [ ! -f "$HOME/.profile" ]; then
-    printf '%s\n%s\n%s\n' "$MARK_A" "$PATH_LINE" "$MARK_B" >> "$HOME/.profile"
-    added=" $HOME/.profile"
-  fi
 fi
 
 if [ -n "$added" ]; then step "added to your PATH in:$added"; fi
@@ -212,4 +222,4 @@ if [ "$#" -eq 0 ]; then
   exit 0
 fi
 log "→ $FIRST $*"
-exec "$BIN_DIR/$FIRST" "$@"
+exec "$BIN_DIR/$FIRST" "$@" < "$STDIN_SRC"

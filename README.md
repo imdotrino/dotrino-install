@@ -160,6 +160,13 @@ que había que repetir el `curl` entero cada vez):
   piezas se quedan corriendo (un servidor, un agente, una UI) y arrancarlas sin que nadie
   lo pidiera deja la terminal parada, que se lee como un cuelgue. Con argumentos sí la
   arranca, porque ahí se pidió una acción concreta (`… -- @dotrino/terminal-agent enroll`);
+- **la tty se le pasa a cada comando, nunca al shell.** `exec < /dev/tty` parece
+  inofensivo y no lo es: con `curl | sh` el stdin del shell **es el propio script**, así
+  que reemplazarlo tira lo que quedaba por leer y el shell se pone a leer del teclado —
+  parado y mudo. Estuvo años sin morder porque el script era corto y esa línea caía casi
+  al final; al crecer se comió medio instalador (2026-08-24). Si vuelves a tocar esto:
+  **se prueba bajo una terminal de verdad** (`script -qec "curl … | sh -s -- …" /dev/null`),
+  porque con la salida capturada `[ -t 1 ]` es falso y el fallo no aparece;
 - **dice en qué paso está mientras lo hace**, con barra de progreso al bajar Node y sin
   silenciar a npm. Un instalador no parece colgado por tardar: parece colgado por tardar
   **sin decir en qué está**.
