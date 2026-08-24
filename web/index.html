@@ -135,9 +135,10 @@
       administrador y no interfiere con lo que ya tengas instalado. Para deshacerlo, basta con borrar esa carpeta.</p>
   </div>
   <div class="card">
-    <h3 data-i18n="c3t">Y arranca la herramienta</h3>
-    <p data-i18n="c3b">Nada más. No deja servicios corriendo ni cambia tu configuración: eso lo decide cada herramienta,
-      y te lo dice ella.</p>
+    <h3 data-i18n="c3t">Deja el comando puesto</h3>
+    <p data-i18n="c3b">Y arranca la herramienta. A partir de ahí ya no hace falta repetir nada: el comando queda listo
+      para escribirlo a secas en cualquier terminal. No deja servicios corriendo: eso lo decide cada herramienta, y te
+      lo dice ella.</p>
   </div>
 
   <div class="look">
@@ -145,12 +146,14 @@
     <p class="muted" data-i18n="readb">Es sano desconfiar de un comando que baja algo de internet y lo ejecuta —también
       del nuestro—. Son dos archivos cortos y están a la vista:
       <a href="install.sh">install.sh</a> · <a href="install.ps1">install.ps1</a>.
-      También puedes saltártelo del todo: si ya tienes Node, <code>npx -y &lt;paquete&gt;</code> hace lo mismo.</p>
+      También puedes saltártelo del todo: si ya tienes Node, <code>npx -y &lt;paquete&gt;</code> corre la herramienta
+      sin instalar nada (y el propio instalador lo hace así con <code>--run-once</code>).</p>
   </div>
 
   <h2 data-i18n="h2alt">Sin esto también se puede</h2>
   <p class="muted" data-i18n="altb">Todo lo del ecosistema se publica en npm. Con Node instalado, cualquier herramienta
-    arranca con <code>npx</code>, y el instalador solo te ahorra el paso de conseguir Node.</p>
+    arranca con <code>npx</code> sin instalar nada. Lo que añade el instalador es conseguirte Node si falta y dejarte
+    el comando puesto, para no repetir el <code>npx</code> cada vez.</p>
 
 </main>
 
@@ -182,12 +185,12 @@ const EN = {
   c1b: 'The ecosystem tools need Node 20 or newer. If you already have it, it touches nothing.',
   c2t: 'If it is missing, it downloads it aside',
   c2b: 'It puts it in a folder of yours (<code>~/.dotrino</code>), not in the system: no admin password and no interference with whatever you already have. To undo it, delete that folder.',
-  c3t: 'And starts the tool',
-  c3b: 'That is all. It leaves no services running and changes no settings: each tool decides that, and tells you itself.',
+  c3t: 'Leaves the command in place',
+  c3b: 'And starts the tool. From then on there is nothing to repeat: the command is there to be typed on its own in any terminal. It leaves no services running: each tool decides that, and tells you itself.',
   h2read: 'You can read it before running it',
-  readb: 'Being wary of a command that downloads something from the internet and runs it is healthy —ours included—. They are two short files and they are in plain sight: <a href="install.sh">install.sh</a> · <a href="install.ps1">install.ps1</a>. You can also skip it entirely: if you already have Node, <code>npx -y &lt;package&gt;</code> does the same.',
+  readb: 'Being wary of a command that downloads something from the internet and runs it is healthy —ours included—. They are two short files and they are in plain sight: <a href="install.sh">install.sh</a> · <a href="install.ps1">install.ps1</a>. You can also skip it entirely: if you already have Node, <code>npx -y &lt;package&gt;</code> runs the tool without installing anything (and the installer itself does that with <code>--run-once</code>).',
   h2alt: 'You can do without this',
-  altb: 'Everything in the ecosystem is published on npm. With Node installed, any tool starts with <code>npx</code>, and the installer only saves you the step of getting Node.',
+  altb: 'Everything in the ecosystem is published on npm. With Node installed, any tool starts with <code>npx</code> without installing anything. What the installer adds is getting you Node if it is missing and leaving the command in place, so you do not repeat the <code>npx</code> every time.',
   foot: 'Part of the Dotrino ecosystem. Your data, in your place, under your rules.'
 }
 const PKG = '@dotrino/vaultd'

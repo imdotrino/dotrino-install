@@ -132,6 +132,48 @@ const { canInstall, isInstalled, install } = useInstall()
 > Para el botón ya hecho (con modal iOS incluido) usá el Web Component; el
 > composable es solo para botones a medida.
 
+## El instalador universal (`web/install.sh`, `web/install.ps1`)
+
+Servido en **[install.dotrino.com](https://install.dotrino.com/)**. Pone a andar cualquier
+pieza del ecosistema publicada en npm:
+
+```sh
+curl -fsSL https://install.dotrino.com/install.sh | sh -s -- @dotrino/inspector
+# …y a partir de ahí, desde cualquier terminal:
+dotrino-inspector
+```
+
+**Instala de verdad** (desde 2026-08-24; antes solo hacía `npx` y no dejaba comando, así
+que había que repetir el `curl` entero cada vez):
+
+- `npm install -g` con el prefijo en `~/.dotrino/npm`, **sin root**;
+- enlaces en **`~/.dotrino/bin`**, que es **lo único** que se mete al `PATH`: así la línea
+  del rc no cambia aunque cambie lo de dentro. Si hubo que bajar Node, sus enlaces van
+  ahí también — si no, el `#!/usr/bin/env node` del comando se queda sin intérprete;
+- una línea **idempotente** en `~/.bashrc` / `~/.zshrc` / `~/.profile` con marcadores
+  `# >>> dotrino >>>`, y **se dice** qué archivo se tocó. En Windows, el `PATH` del
+  usuario (sin administrador);
+- el **nombre del comando sale del `bin` del `package.json`** del paquete: vale para
+  cualquier pieza sin cablear nada;
+- **actualizar es volver a correr el mismo comando.**
+
+Banderas (van **antes** del paquete):
+
+| | |
+|---|---|
+| `--run-once` | no instala: corre el paquete una vez con `npx`, como antes |
+| `--no-path` | no toca el rc; imprime la línea para pegarla |
+| `--ignore-scripts` | no ejecuta los scripts de instalación de las dependencias |
+
+> **Por qué los scripts de instalación van activados**, al revés que en los repos del
+> ecosistema (CONVENCIONES §1.1): allí se monta un árbol de dependencias para
+> desarrollar; aquí se instala un programa **para usarlo**, y alguno trae binario nativo
+> que se elige en su `postinstall` (el PTY de `@dotrino/terminal-agent`). Con
+> `--ignore-scripts` quedaría instalado y roto, que es peor que no instalarlo. Quien
+> quiera la versión estricta tiene la bandera.
+
+Desinstalar: borrar `~/.dotrino` y quitar el bloque `# >>> dotrino >>>` del rc.
+
 ## Test
 
 ```sh
