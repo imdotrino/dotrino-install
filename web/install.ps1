@@ -35,6 +35,10 @@ if (-not $Pkg) {
   exit 2
 }
 
+# Cada paso se dice EN CUANTO EMPIEZA, no cuando termina: lo que hace que un instalador
+# parezca colgado no es que tarde, es que tarde sin decir en qué está.
+function Step($m) { Write-Host "  . $m" }
+
 $NodeMin = 20
 $NodeVer = 'v20.18.1'
 $DotDir = if ($env:DOTRINO_HOME) { $env:DOTRINO_HOME } else { Join-Path $env:USERPROFILE '.dotrino' }
@@ -46,19 +50,22 @@ function Test-NodeOk {
   catch { return $false }
 }
 
+Write-Host "Dotrino installer - $Pkg"
 $HadNode = Test-NodeOk
 $NodeDir = $null
+if ($HadNode) { Step "Node $(& node -p 'process.versions.node') found, using it" }
 if (-not $HadNode) {
   $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
   $NodeDir = Join-Path $DotDir "node-$NodeVer-win-$arch"
   if (-not (Test-Path (Join-Path $NodeDir 'node.exe'))) {
-    Write-Host "Node $NodeMin+ not found -> downloading Node $NodeVer (win-$arch) into $DotDir (no admin needed)..."
+    Step "Node $NodeMin+ not found - downloading Node $NodeVer (win-$arch), about 25 MB, no admin needed"
     New-Item -ItemType Directory -Force -Path $DotDir | Out-Null
     $zip = Join-Path $env:TEMP "dotrino-node-$NodeVer-$arch.zip"
     Invoke-WebRequest -Uri "https://nodejs.org/dist/$NodeVer/node-$NodeVer-win-$arch.zip" -OutFile $zip
+    Step "unpacking Node into $DotDir"
     Expand-Archive -Path $zip -DestinationPath $DotDir -Force
     Remove-Item $zip -Force
-  }
+  } else { Step "using the Node already downloaded in $DotDir" }
   $env:Path = "$NodeDir;$env:Path"
 }
 
@@ -85,9 +92,11 @@ New-Item -ItemType Directory -Force -Path $BinDir, $NpmPrefix | Out-Null
 # instalado y roto, que es peor que no instalarlo.
 $scriptsFlag = if ($IgnoreScripts) { '--ignore-scripts' } else { $null }
 
-Write-Host "-> installing $Pkg into $DotDir (no admin)..."
-if ($scriptsFlag) { & npm.cmd install -g --prefix "$NpmPrefix" $scriptsFlag $Pkg | Out-Null }
-else { & npm.cmd install -g --prefix "$NpmPrefix" $Pkg | Out-Null }
+# npm SIN silenciar: la instalación puede tardar bastante la primera vez y una ventana sin
+# una sola línea se lee como un cuelgue.
+Step "installing $Pkg into $DotDir (no admin) - the first time this can take a minute"
+if ($scriptsFlag) { & npm.cmd install -g --prefix "$NpmPrefix" $scriptsFlag $Pkg }
+else { & npm.cmd install -g --prefix "$NpmPrefix" $Pkg }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # El nombre del comando lo dice el paquete, no lo adivinamos.
@@ -112,6 +121,7 @@ if (-not $bins) {
 # En Windows npm deja los shims (.cmd/.ps1) en la RAÍZ del prefijo; se copian al único
 # directorio que va al PATH. Si bajamos Node, entra también aquí: si no, el shim no
 # encuentra intérprete.
+Step "copying $($bins -join ' ') into $BinDir"
 foreach ($b in $bins) {
   foreach ($ext in @('', '.cmd', '.ps1')) {
     $src = Join-Path $NpmPrefix "$b$ext"
@@ -119,6 +129,7 @@ foreach ($b in $bins) {
   }
 }
 if ($NodeDir -and (Test-Path $NodeDir)) {
+  Step "copying node, npm and npx there too (the command needs an interpreter)"
   foreach ($n in @('node.exe', 'npm.cmd', 'npx.cmd')) {
     $src = Join-Path $NodeDir $n
     if (Test-Path $src) { Copy-Item $src (Join-Path $BinDir $n) -Force }
@@ -132,6 +143,7 @@ if (-not $NoPath) {
   if ($userPath -notlike "*$BinDir*") {                      # idempotente
     $newPath = if ($userPath) { "$BinDir;$userPath" } else { $BinDir }
     [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
+    Step "added to your user PATH"
     $added = $true
   }
 }
@@ -148,8 +160,15 @@ if ($added) {
 Write-Host 'To update it later, run this same command again.'
 Write-Host ''
 
+# Sin argumentos NO se arranca la herramienta: muchas se quedan corriendo (un servidor,
+# un agente, una UI) y el usuario, que pidió «instálame esto», ve una ventana parada sin
+# haber pedido arrancar nada. Con argumentos sí, porque ahí pidió una acción concreta.
 $env:Path = "$BinDir;$env:Path"
 $first = $bins[0]
+if (-not $Rest -or $Rest.Count -eq 0) {
+  Write-Host "Now run it whenever you want:  $first"
+  exit 0
+}
 Write-Host "-> $first $($Rest -join ' ')"
 & (Join-Path $BinDir "$first.cmd") @Rest
 exit $LASTEXITCODE

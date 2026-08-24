@@ -48,6 +48,9 @@ BIN_DIR="$DOT_DIR/bin"                    # LO ÚNICO que se mete al PATH: así 
 NPM_PREFIX="$DOT_DIR/npm"                 # del rc no cambia aunque cambie lo de dentro
 
 log() { printf '%s\n' "$*" >&2; }
+# Cada paso se dice EN CUANTO EMPIEZA, no cuando termina: lo que hace que un instalador
+# parezca colgado no es que tarde, es que tarde sin decir en qué está.
+step() { printf '  · %s\n' "$*" >&2; }
 
 have_node() {
   command -v node >/dev/null 2>&1 || return 1
@@ -71,16 +74,21 @@ bootstrap_node() {
   t=$(target)
   dir="$DOT_DIR/node-${NODE_VER}-${t}"
   if [ ! -x "$dir/bin/node" ]; then
-    log "Node $NODE_MIN+ not found -> downloading Node ${NODE_VER} (${t}) into ${DOT_DIR} (no root needed)…"
+    step "Node $NODE_MIN+ not found — downloading Node ${NODE_VER} (${t}), about 25 MB, no root needed"
     url="https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-${t}.tar.xz"
     mkdir -p "$DOT_DIR"
     tmp=$(mktemp -d)
-    if command -v curl >/dev/null 2>&1; then curl -fsSL "$url" -o "$tmp/node.tar.xz"
-    elif command -v wget >/dev/null 2>&1; then wget -qO "$tmp/node.tar.xz" "$url"
+    # Con barra de progreso (-#), no en silencio: son 25 MB y en una conexión lenta el
+    # silencio dura minutos.
+    if command -v curl >/dev/null 2>&1; then curl -fL --progress-bar "$url" -o "$tmp/node.tar.xz"
+    elif command -v wget >/dev/null 2>&1; then wget --show-progress -qO "$tmp/node.tar.xz" "$url"
     else log "curl or wget is required to download Node."; exit 1
     fi
+    step "unpacking Node into $DOT_DIR"
     tar -xJf "$tmp/node.tar.xz" -C "$DOT_DIR"
     rm -rf "$tmp"
+  else
+    step "using the Node already downloaded in $DOT_DIR"
   fi
   PATH="$dir/bin:$PATH"; export PATH
   BOOTSTRAPPED_DIR="$dir"
@@ -95,7 +103,12 @@ case "$PKG" in
        exit 2 ;;
 esac
 
-have_node || bootstrap_node
+log "Dotrino installer — $PKG"
+if have_node; then
+  step "Node $(node -p 'process.versions.node' 2>/dev/null) found, using it"
+else
+  bootstrap_node
+fi
 
 # `curl | sh` deja stdin conectado al pipe, no a la terminal: si el comando necesita
 # entrada del usuario (p. ej. pegar el código de emparejamiento), reengancha la tty
@@ -120,8 +133,10 @@ mkdir -p "$BIN_DIR" "$NPM_PREFIX"
 SCRIPTS_FLAG=''
 if [ "$IGNORE_SCRIPTS" = 1 ]; then SCRIPTS_FLAG='--ignore-scripts'; fi
 
-log "→ installing $PKG into $DOT_DIR (no root)…"
-npm install -g --prefix "$NPM_PREFIX" $SCRIPTS_FLAG "$PKG" >/dev/null
+# npm SIN silenciar: la instalación puede tardar bastante la primera vez y un minuto sin
+# una sola línea se lee como un cuelgue. Mejor ver el ruido de npm que dudar.
+step "installing $PKG into $DOT_DIR (no root) — the first time this can take a minute"
+npm install -g --prefix "$NPM_PREFIX" $SCRIPTS_FLAG "$PKG"
 
 # El nombre del comando lo dice el paquete, no lo adivinamos: así esto vale para
 # cualquier pieza del ecosistema sin cablear nada.
@@ -143,10 +158,12 @@ fi
 
 # Un solo directorio en el PATH, con enlaces a lo instalado. Si bajamos Node, entra
 # también aquí: si no, el `#!/usr/bin/env node` del comando no encuentra intérprete.
+step "linking$(printf ' %s' $BINS) into $BIN_DIR"
 for b in $BINS; do
   [ -e "$NPM_PREFIX/bin/$b" ] && ln -sf "$NPM_PREFIX/bin/$b" "$BIN_DIR/$b"
 done
 if [ -n "${BOOTSTRAPPED_DIR:-}" ]; then
+  step "linking node, npm and npx there too (the command needs an interpreter)"
   for n in node npm npx; do
     [ -e "$BOOTSTRAPPED_DIR/bin/$n" ] && ln -sf "$BOOTSTRAPPED_DIR/bin/$n" "$BIN_DIR/$n"
   done
@@ -171,11 +188,12 @@ if [ "$NO_PATH" = 0 ]; then
   fi
 fi
 
+if [ -n "$added" ]; then step "added to your PATH in:$added"; fi
+
 FIRST=$(printf '%s' "$BINS" | head -n1)
 log ""
 log "Installed:$(printf ' %s' $BINS)"
 if [ -n "$added" ]; then
-  log "Added to your PATH in:$added"
   log "A NEW terminal will find it. In this one:  export PATH=\"$BIN_DIR:\$PATH\""
 else
   log "Your PATH was left untouched. Add this line to your shell config:"
@@ -184,6 +202,14 @@ fi
 log "To update it later, run this same command again."
 log ""
 
+# Sin argumentos NO se arranca la herramienta: muchas se quedan corriendo (un servidor,
+# un agente, una UI) y el usuario, que pidió «instálame esto», ve una terminal parada sin
+# haber pedido arrancar nada. Se instala, se dice el comando, y él decide cuándo.
+# Con argumentos sí, porque ahí pidió una acción concreta (`… -- <pkg> enroll`).
 PATH="$BIN_DIR:$PATH"; export PATH
+if [ "$#" -eq 0 ]; then
+  log "Now run it whenever you want:  $FIRST"
+  exit 0
+fi
 log "→ $FIRST $*"
 exec "$BIN_DIR/$FIRST" "$@"

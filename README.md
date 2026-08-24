@@ -155,7 +155,14 @@ que había que repetir el `curl` entero cada vez):
   usuario (sin administrador);
 - el **nombre del comando sale del `bin` del `package.json`** del paquete: vale para
   cualquier pieza sin cablear nada;
-- **actualizar es volver a correr el mismo comando.**
+- **actualizar es volver a correr el mismo comando**;
+- **sin argumentos NO arranca la herramienta**: instala, dice el comando y sale. Muchas
+  piezas se quedan corriendo (un servidor, un agente, una UI) y arrancarlas sin que nadie
+  lo pidiera deja la terminal parada, que se lee como un cuelgue. Con argumentos sí la
+  arranca, porque ahí se pidió una acción concreta (`… -- @dotrino/terminal-agent enroll`);
+- **dice en qué paso está mientras lo hace**, con barra de progreso al bajar Node y sin
+  silenciar a npm. Un instalador no parece colgado por tardar: parece colgado por tardar
+  **sin decir en qué está**.
 
 Banderas (van **antes** del paquete):
 
