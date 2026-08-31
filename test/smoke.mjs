@@ -56,7 +56,7 @@ const ok = (k) => { results[k] = '✓' }
 
   // 2. sin prompt y no-iOS: canInstall=false y host oculto
   const hiddenInit = await page.evaluate(() => window.cc.canInstall() === false && document.querySelector('#btn').hidden === true)
-  hiddenInit ? ok('hidden-when-no-prompt') : fail('hidden-when-no-prompt', 'debería estar oculto sin prompt en desktop')
+  hiddenInit ? ok('hidden-when-no-prompt') : fail('hidden-when-no-prompt', 'should be hidden without a prompt on desktop')
 
   // 3. tras beforeinstallprompt: aparece el botón con texto "Instalar" (es)
   await page.evaluate(() => window.fakePrompt())
@@ -66,23 +66,23 @@ const ok = (k) => { results[k] = '✓' }
     const lbl = el.shadowRoot?.querySelector('.lbl')?.textContent
     return !el.hidden && window.cc.canInstall() === true && window.cc.hasNativePrompt() === true && lbl === 'Instalar App'
   })
-  shown ? ok('shows-on-bip') : fail('shows-on-bip', 'debería mostrar botón "Instalar" tras beforeinstallprompt')
+  shown ? ok('shows-on-bip') : fail('shows-on-bip', 'should show the "Instalar" button after beforeinstallprompt')
 
   // 4. click dispara prompt() nativo
   await page.evaluate(() => document.querySelector('#btn').shadowRoot.querySelector('button.trigger').click())
   await page.waitForTimeout(50)
   const promptCalled = await page.evaluate(() => window._promptCalled === true)
-  promptCalled ? ok('click-fires-native-prompt') : fail('click-fires-native-prompt', 'el click no llamó a prompt()')
+  promptCalled ? ok('click-fires-native-prompt') : fail('click-fires-native-prompt', 'the click did not call prompt()')
 
   // 5. tras aceptar (userChoice) y consumir, ya no hay prompt nativo
   const consumed = await page.evaluate(() => window.cc.hasNativePrompt() === false)
-  consumed ? ok('prompt-consumed') : fail('prompt-consumed', 'el prompt debería consumirse tras usarse')
+  consumed ? ok('prompt-consumed') : fail('prompt-consumed', 'the prompt should be consumed after use')
 
   // 6. appinstalled → canInstall false, oculto
   await page.evaluate(() => window.fakeInstalled())
   await page.waitForTimeout(50)
   const afterInstall = await page.evaluate(() => window.cc.isAppInstalled() === true && document.querySelector('#btn').hidden === true)
-  afterInstall ? ok('hides-after-appinstalled') : fail('hides-after-appinstalled', 'debería ocultarse tras appinstalled')
+  afterInstall ? ok('hides-after-appinstalled') : fail('hides-after-appinstalled', 'should hide after appinstalled')
 
   if (errors.length) fail('no-page-errors-desktop', errors.join(' | '))
   else ok('no-page-errors-desktop')
@@ -102,19 +102,19 @@ const ok = (k) => { results[k] = '✓' }
 
   // iOS: canInstall true aunque no haya prompt
   const iosShows = await page.evaluate(() => window.cc.isIOS() === true && window.cc.canInstall() === true && !document.querySelector('#btn').hidden)
-  iosShows ? ok('ios-shows-without-prompt') : fail('ios-shows-without-prompt', 'iOS debería ofrecer instalar sin beforeinstallprompt')
+  iosShows ? ok('ios-shows-without-prompt') : fail('ios-shows-without-prompt', 'iOS should offer install without beforeinstallprompt')
 
   // click en iOS → abre modal de instrucciones (sin alert)
   await page.evaluate(() => document.querySelector('#btn').shadowRoot.querySelector('button.trigger').click())
   await page.waitForTimeout(80)
   const modalOpen = await page.evaluate(() => !!document.querySelector('#btn').shadowRoot.querySelector('.backdrop .card h2'))
-  modalOpen ? ok('ios-click-opens-modal') : fail('ios-click-opens-modal', 'el click en iOS debería abrir el modal de instrucciones')
+  modalOpen ? ok('ios-click-opens-modal') : fail('ios-click-opens-modal', 'the click on iOS should open the instructions modal')
 
   // cerrar modal
   await page.evaluate(() => document.querySelector('#btn').shadowRoot.querySelector('.ok').click())
   await page.waitForTimeout(50)
   const modalClosed = await page.evaluate(() => !document.querySelector('#btn').shadowRoot.querySelector('.backdrop'))
-  modalClosed ? ok('ios-modal-closes') : fail('ios-modal-closes', 'el modal debería cerrarse')
+  modalClosed ? ok('ios-modal-closes') : fail('ios-modal-closes', 'the modal should close')
 
   if (errors.length) fail('no-page-errors-ios', errors.join(' | '))
   else ok('no-page-errors-ios')
@@ -124,8 +124,8 @@ const ok = (k) => { results[k] = '✓' }
 await browser.close()
 await new Promise((r) => server.close(r))
 
-console.log('\nResultados smoke @dotrino/install:')
+console.log('\nSmoke results @dotrino/install:')
 for (const [k, v] of Object.entries(results)) console.log(`  ${v.startsWith('✓') ? '✓' : '✗'} ${k}${v.startsWith('✓') ? '' : ' — ' + v.slice(2)}`)
 const failed = Object.values(results).filter((v) => !v.startsWith('✓'))
-if (failed.length) { console.error(`\n${failed.length} fallo(s)`); process.exit(1) }
-console.log('\nTodo OK')
+if (failed.length) { console.error(`\n${failed.length} failure(s)`); process.exit(1) }
+console.log('\nAll OK')
