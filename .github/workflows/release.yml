@@ -37,6 +37,8 @@ jobs:
 
       - run: npm i -g npm@latest
       - run: npm ci
+      # El smoke abre el botón en un Chromium de verdad.
+      - run: npx playwright install --with-deps chromium
 
       # LAS PRUEBAS ANTES DE PUBLICAR. Una versión que no pasa su suite no llega a npm.
       - run: npm test

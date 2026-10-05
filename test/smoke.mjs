@@ -1,4 +1,4 @@
-import { chromium } from '../../dotrino-store/node_modules/playwright/index.mjs'
+import { chromium } from 'playwright'
 import { fileURLToPath } from 'node:url'
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
