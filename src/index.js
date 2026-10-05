@@ -232,7 +232,10 @@ const ICON_IOS_SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
    ──────────────────────────────────────────────────────────────────────────── */
 
 const STYLE = `
-  :host { all: initial; display: inline-flex; vertical-align: middle; font-family: inherit; }
+  /* \`all: initial\` aísla del CSS de la página, pero también reinicia el COLOR a negro: el
+     botón usa currentColor y en una barra oscura salía negro sobre oscuro (terminal, 0.3.1).
+     El color se hereda, igual que la fuente. */
+  :host { all: initial; display: inline-flex; vertical-align: middle; font-family: inherit; color: inherit; }
   :host([hidden]) { display: none; }
   button.trigger {
     all: unset;
