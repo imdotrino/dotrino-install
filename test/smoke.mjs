@@ -121,6 +121,22 @@ const ok = (k) => { results[k] = '✓' }
   await ctx.close()
 }
 
+// --- Inside the Dotrino native app: the page already IS the app, nothing to install ----
+{
+  const ctx = await browser.newContext({
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 DotrinoApp/0.4.13',
+    viewport: { width: 390, height: 844 }
+  })
+  await ctx.addInitScript(() => { window.DotrinoNative = { platform: () => 'ios' } })
+  const page = await ctx.newPage()
+  await page.goto(baseUrl)
+  await page.waitForFunction(() => window.cc)
+  await page.waitForTimeout(300)
+  const hidden = await page.evaluate(() => document.getElementById('btn').hidden && window.cc.isAppInstalled())
+  hidden ? ok('hidden-inside-native-app') : fail('hidden-inside-native-app', 'the button must not show inside the Dotrino native app')
+  await ctx.close()
+}
+
 await browser.close()
 await new Promise((r) => server.close(r))
 

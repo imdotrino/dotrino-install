@@ -36,6 +36,8 @@ detalles que casi todas las copias hacían mal:
    instrucciones propio** (no `alert()`, prohibido en el ecosistema).
 3. **No reaparecer** cuando la app ya corre instalada (`display-mode: standalone`)
    ni tras `appinstalled`.
+   — ni **dentro de la app nativa de Dotrino** (iOS o Android), que se anuncia con
+   `window.DotrinoNative`: ahí la página ya es la app y no hay nada que instalar (≥ 0.3.3).
 
 ## Uso — Web Component (recomendado)
 

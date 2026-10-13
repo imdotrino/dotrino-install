@@ -76,6 +76,9 @@ export function isAppInstalled () {
     if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true
     // iOS Safari expone navigator.standalone (no es estándar).
     if (window.navigator && window.navigator.standalone === true) return true
+    // Dentro de la app nativa de Dotrino (iOS o Android) la página ya ES la app: no hay
+    // nada que instalar. La app se anuncia con `window.DotrinoNative`.
+    if (window.DotrinoNative) return true
   } catch (_) {}
   return false
 }
