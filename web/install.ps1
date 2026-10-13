@@ -84,13 +84,55 @@ if ($RunOnce) {
 }
 
 # ── Instalar de verdad ──────────────────────────────────────────────────────────────
-New-Item -ItemType Directory -Force -Path $BinDir, $NpmPrefix | Out-Null
-
 # Los scripts de instalación van ACTIVADOS a propósito, al revés que en los repos del
 # ecosistema (CONVENCIONES §1.1): aquí se instala un programa para USARLO, y alguno trae
 # binario nativo que se elige en su `postinstall`. Con --ignore-scripts quedaría
 # instalado y roto, que es peor que no instalarlo.
 $scriptsFlag = if ($IgnoreScripts) { '--ignore-scripts' } else { $null }
+
+# El nombre del paquete sin la versión (`@dotrino/x@1.2.3` -> `@dotrino/x`).
+$PkgName = $Pkg -replace '(.)@[^@/]*$', '$1'
+
+# ¿YA ESTÁ INSTALADO EN OTRO SITIO? Igual que en install.sh: el npm del PATH puede tener el
+# paquete en SU carpeta global, y una segunda copia aquí deja dos versiones del mismo
+# comando. Se actualiza la copia que el PATH ya usa: la de .dotrino si existe (avisando de
+# la otra); si no, la del npm global cuando se puede escribir ahí; si no, se instala aquí.
+$InstallGlobal = $false
+if ($HadNode) {
+  $gPrefix = (& npm.cmd prefix -g 2>$null | Select-Object -First 1)
+  $gRoot = (& npm.cmd root -g 2>$null | Select-Object -First 1)
+  if ($gPrefix -and ($gPrefix -ne $NpmPrefix) -and (Test-Path (Join-Path $gRoot "$PkgName\package.json"))) {
+    if (Test-Path (Join-Path $NpmPrefix "node_modules\$PkgName\package.json")) {
+      Write-Host "  ! $PkgName is installed twice: in $NpmPrefix (the one your PATH runs) and in $gPrefix."
+      Write-Host "    Updating the first. To remove the other:  npm uninstall -g $PkgName"
+    } else {
+      $writable = $true
+      try { $probe = Join-Path $gRoot ".dotrino-write-test"; [IO.File]::WriteAllText($probe, ''); Remove-Item $probe -Force } catch { $writable = $false }
+      if ($writable) {
+        Step "$PkgName is already installed in $gPrefix - updating that one instead of adding a second copy"
+        $InstallGlobal = $true
+      } else {
+        Write-Host "  ! $PkgName is also installed in $gPrefix, which needs an administrator to change."
+        Write-Host "    Installing in $DotDir, which goes first in your PATH."
+      }
+    }
+  }
+}
+if ($InstallGlobal) {
+  if ($scriptsFlag) { & npm.cmd install -g $scriptsFlag $Pkg } else { & npm.cmd install -g $Pkg }
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  Write-Host ''
+  Write-Host "Updated $PkgName in $gPrefix. Nothing was added under $DotDir and your PATH was left untouched."
+  Write-Host 'To update it later, run this same command again.'
+  if (-not $Rest -or $Rest.Count -eq 0) { exit 0 }
+  $bin = (Get-Content (Join-Path $gRoot "$PkgName\package.json") -Raw | ConvertFrom-Json).bin
+  $first = if ($bin -is [string]) { ($PkgName -split '/')[-1] } else { ($bin.PSObject.Properties | Select-Object -First 1).Name }
+  if (-not $first) { exit 0 }
+  Write-Host "-> $first $($Rest -join ' ')"
+  & (Join-Path $gPrefix "$first.cmd") @Rest
+  exit $LASTEXITCODE
+}
+New-Item -ItemType Directory -Force -Path $BinDir, $NpmPrefix | Out-Null
 
 # npm SIN silenciar: la instalación puede tardar bastante la primera vez y una ventana sin
 # una sola línea se lee como un cuelgue.
@@ -100,7 +142,6 @@ else { & npm.cmd install -g --prefix "$NpmPrefix" $Pkg }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # El nombre del comando lo dice el paquete, no lo adivinamos.
-$PkgName = $Pkg -replace '(.)@[^@/]*$', '$1'
 $reader = @'
 const { join } = require("node:path")
 const fs = require("node:fs")

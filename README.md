@@ -157,6 +157,12 @@ que había que repetir el `curl` entero cada vez):
   usuario (sin administrador);
 - el **nombre del comando sale del `bin` del `package.json`** del paquete: vale para
   cualquier pieza sin cablear nada;
+- **si el paquete ya está instalado con el npm del sistema, se actualiza esa copia** y no
+  se crea otra en `~/.dotrino` (desde 2026-10-13). Dos copias dejan dos versiones del
+  mismo comando: `~/.dotrino/bin` va delante en el `PATH`, y quien actualice con
+  `npm install -g` actualiza la otra. Si ya hay dos, se actualiza la de `~/.dotrino` y se
+  dice cómo quitar la otra; si la del sistema necesita root, se instala en `~/.dotrino` y
+  se avisa;
 - **actualizar es volver a correr el mismo comando**;
 - **sin argumentos NO arranca la herramienta**: instala, dice el comando y sale. Muchas
   piezas se quedan corriendo (un servidor, un agente, una UI) y arrancarlas sin que nadie

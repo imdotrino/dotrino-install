@@ -131,7 +131,6 @@ if [ "$RUN_ONCE" = 1 ]; then
 fi
 
 # ── Instalar de verdad ──────────────────────────────────────────────────────────────
-mkdir -p "$BIN_DIR" "$NPM_PREFIX"
 
 # Los scripts de instalación de las dependencias van ACTIVADOS a propósito, al revés que
 # en los repos del ecosistema (CONVENCIONES §1.1): aquí no se está montando un árbol de
@@ -141,14 +140,64 @@ mkdir -p "$BIN_DIR" "$NPM_PREFIX"
 SCRIPTS_FLAG=''
 if [ "$IGNORE_SCRIPTS" = 1 ]; then SCRIPTS_FLAG='--ignore-scripts'; fi
 
+# El nombre del paquete sin la versión (`@dotrino/x@1.2.3` → `@dotrino/x`).
+PKG_NAME=$(printf '%s' "$PKG" | sed 's/\(.\)@[^@/]*$/\1/')
+
+# ¿YA ESTÁ INSTALADO EN OTRO SITIO? El npm que hay en el PATH (nvm, Homebrew, el del
+# sistema) puede tener el paquete en SU carpeta global, puesto con `npm install -g`. Una
+# segunda copia aquí deja dos versiones del mismo comando: `~/.dotrino/bin` va delante en
+# el PATH, así que se usa esta, y quien actualice con `npm install -g` actualiza la otra.
+# Pasó el 2026-10-13 con el agente de terminal: la 0.46.0 instalada y la 0.43.0 corriendo.
+#
+# Se actualiza la copia que el PATH ya usa:
+#   · la de ~/.dotrino, si existe (y se avisa de la otra, que nadie usa);
+#   · si no, la del npm global, cuando se puede escribir ahí sin root;
+#   · si no hay ninguna, o la global es del sistema, se instala en ~/.dotrino.
+INSTALL_PREFIX="$NPM_PREFIX"
+OTHER_PREFIX=''
+if [ -z "${BOOTSTRAPPED_DIR:-}" ]; then
+  g_prefix=$(npm prefix -g 2>/dev/null || true)
+  g_root=$(npm root -g 2>/dev/null || true)
+  if [ -n "$g_prefix" ] && [ "$g_prefix" != "$NPM_PREFIX" ] && [ -f "$g_root/$PKG_NAME/package.json" ]; then
+    OTHER_PREFIX="$g_prefix"
+  fi
+fi
+if [ -n "$OTHER_PREFIX" ]; then
+  if [ -f "$NPM_PREFIX/lib/node_modules/$PKG_NAME/package.json" ]; then
+    log "  ! $PKG_NAME is installed twice: in $NPM_PREFIX (the one your PATH runs) and in $OTHER_PREFIX."
+    log "    Updating the first. To remove the other:  npm uninstall -g $PKG_NAME"
+  elif [ -w "$g_root" ]; then
+    step "$PKG_NAME is already installed in $OTHER_PREFIX — updating that one instead of adding a second copy"
+    INSTALL_PREFIX="$OTHER_PREFIX"
+  else
+    log "  ! $PKG_NAME is also installed in $OTHER_PREFIX, which needs root to change."
+    log "    Installing in $DOT_DIR, which goes first in your PATH. To remove the other:  sudo npm uninstall -g $PKG_NAME"
+  fi
+fi
+
 # npm SIN silenciar: la instalación puede tardar bastante la primera vez y un minuto sin
 # una sola línea se lee como un cuelgue. Mejor ver el ruido de npm que dudar.
+if [ "$INSTALL_PREFIX" != "$NPM_PREFIX" ]; then
+  npm install -g $SCRIPTS_FLAG "$PKG" < "$STDIN_SRC"
+  log ""
+  log "Updated $PKG_NAME in $INSTALL_PREFIX. Nothing was added under $DOT_DIR and your PATH was left untouched."
+  log "To update it later, run this same command again."
+  if [ "$#" -eq 0 ]; then exit 0; fi
+  FIRST=$(node -e '
+    const pkg = require(require("node:path").join(process.argv[1], process.argv[2], "package.json"))
+    const bin = pkg.bin
+    process.stdout.write(typeof bin === "string" ? pkg.name.split("/").pop() : Object.keys(bin || {})[0] || "")
+  ' "$g_root" "$PKG_NAME")
+  [ -n "$FIRST" ] || exit 0
+  log "→ $FIRST $*"
+  exec "$(npm prefix -g)/bin/$FIRST" "$@" < "$STDIN_SRC"
+fi
+mkdir -p "$BIN_DIR" "$NPM_PREFIX"
 step "installing $PKG into $DOT_DIR (no root) — the first time this can take a minute"
 npm install -g --prefix "$NPM_PREFIX" $SCRIPTS_FLAG "$PKG" < "$STDIN_SRC"
 
 # El nombre del comando lo dice el paquete, no lo adivinamos: así esto vale para
 # cualquier pieza del ecosistema sin cablear nada.
-PKG_NAME=$(printf '%s' "$PKG" | sed 's/\(.\)@[^@/]*$/\1/')
 BINS=$(node -e '
   const { join } = require("node:path")
   const fs = require("node:fs")
